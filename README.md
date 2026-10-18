@@ -56,6 +56,26 @@ staging candidate is never confused with a production deployment.
 - GitLab CI stages for testing, secret scanning, license checks, evidence
   collection, gating and a static, non-deployed staging artifact.
 
+## Verified upstream CI job artifacts (candidate)
+
+Rather than declaring every CI stage passed from environment flags alone,
+the GitLab pipeline now downloads independent records from five successful
+upstream jobs: tests, security, license, documentation, and rollback.
+Each record identifies the exact GitLab job name, numeric job ID, pipeline
+ID, full commit SHA, a PASS status, and a SHA-256 fingerprint of its source
+evidence file. The evidence collector rejects missing, duplicate, mismatched,
+or modified records. The final dashboard job downloads artifacts from
+**both** the decision gate and the evidence collector.
+
+These records are **not cryptographic GitLab attestations**: official GitLab
+job history must still be independently checked. Local integration tests
+intentionally use simulated CI environment variables and are not proof that
+GitLab Duo or GitLab CI ran remotely.
+
+- [First real GitLab CI acceptance checklist](CI_PRECHECK.md)
+- [Independent CI-artifact tests](tests/test_ci_attestation.py)
+- [Synthetic pipeline integration tests](tests/test_ci_pipeline_mock.py)
+
 ## Local test
 
 No paid service, external API, model download or GPU required.

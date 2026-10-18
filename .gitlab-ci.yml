@@ -15,15 +15,23 @@ unit_tests:
   script:
     - python3 -m unittest discover -s tests -v
     - python3 -m compileall -q releaseguard.py
+    - python3 ci_attestation.py emit --stage tests
+  artifacts:
+    when: on_success
+    paths:
+      - attest_tests.json
+    expire_in: 1 week
 
 secret_scan:
   stage: security
   script:
     - python3 ci_security.py
+    - python3 ci_attestation.py emit --stage security
   artifacts:
     when: always
     paths:
       - scan_results.json
+      - attest_security.json
     expire_in: 1 week
 
 license_check:
@@ -33,16 +41,51 @@ license_check:
     - grep -q "MIT License" LICENSE
     - test -f AGENTS.md
     - test -f README.md
+    - python3 ci_attestation.py emit --stage license
+  artifacts:
+    when: on_success
+    paths:
+      - attest_license.json
+    expire_in: 1 week
+
+documentation_check:
+  stage: license
+  script:
+    - test -s AGENTS.md
+    - test -s README.md
+    - test -s DEMO_RUNBOOK.md
+    - python3 ci_attestation.py emit --stage documentation
+  artifacts:
+    when: on_success
+    paths:
+      - attest_documentation.json
+    expire_in: 1 week
+
+rollback_check:
+  stage: license
+  script:
+    - test -s ROLLBACK.md
+    - grep -qi rollback ROLLBACK.md
+    - python3 ci_attestation.py emit --stage rollback
+  artifacts:
+    when: on_success
+    paths:
+      - attest_rollback.json
+    expire_in: 1 week
 
 create_evidence:
   stage: evidence
   needs:
     - job: unit_tests
-      artifacts: false
+      artifacts: true
     - job: secret_scan
       artifacts: true
     - job: license_check
-      artifacts: false
+      artifacts: true
+    - job: documentation_check
+      artifacts: true
+    - job: rollback_check
+      artifacts: true
   script:
     - python3 ci_evidence.py
   artifacts:
@@ -50,6 +93,12 @@ create_evidence:
     paths:
       - release_evidence.json
       - release_proposal.json
+      - attest_tests.json
+      - attest_security.json
+      - attest_license.json
+      - attest_documentation.json
+      - attest_rollback.json
+      - scan_results.json
     expire_in: 1 week
 
 independent_gate:
@@ -69,6 +118,8 @@ staging_preview:
   stage: stage
   needs:
     - job: independent_gate
+      artifacts: true
+    - job: create_evidence
       artifacts: true
   script:
     - python3 stage_preview.py
