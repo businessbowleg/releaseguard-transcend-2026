@@ -58,7 +58,7 @@ independent_gate:
     - job: create_evidence
       artifacts: true
   script:
-    - python3 releaseguard.py check --root . --proposal release_proposal.json --evidence release_evidence.json --output release_decision.json
+    - python3 releaseguard.py check --root . --proposal release_proposal.json --evidence release_evidence.json --output release_decision.json --require-gitlab
   artifacts:
     when: always
     paths:

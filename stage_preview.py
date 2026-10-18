@@ -3,12 +3,16 @@ import json
 import os
 from pathlib import Path
 
-from releaseguard import decide,load_json
+from releaseguard import decide,load_json,verify_ci_runtime
 
 ROOT=Path(__file__).resolve().parent
 proposal=load_json(ROOT/"release_proposal.json")
 evidence=load_json(ROOT/"release_evidence.json")
 report=load_json(ROOT/"release_decision.json")
+if os.environ.get("GITLAB_CI")=="true":
+    verify_ci_runtime(proposal,evidence,stage="stage")
+elif evidence["provenance"]["pipeline_id"]!="LOCAL_FIXTURE_NOT_GITLAB":
+    raise SystemExit("Non-GitLab staging cannot claim a real GitLab pipeline.")
 recomputed=decide(ROOT,proposal,evidence)
 if report!=recomputed or report["decision"]!="STAGING_CANDIDATE":
     raise SystemExit("Evidence digest mismatch or staging gate not passed.")

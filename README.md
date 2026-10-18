@@ -29,6 +29,10 @@ staging candidate is never confused with a production deployment.
   repository or point to symlinks, sensitive files or embedded secrets.
 - Three-way stage statuses: PASS, FAIL, UNVERIFIED. Missing evidence = NO_GO.
 - Strict proposal schema. No action named deploy-production is accepted.
+- Pipeline provenance hardening: a real GitLab gate requires a matching
+  numeric pipeline ID, full CI_COMMIT_SHA, CI_JOB_STAGE and evidence source
+  per stage. Local fixture evidence cannot pass --require-gitlab.
+- Reject in-repository symlink paths, including symlinked parent directories.
 - Human HMAC acknowledgement (only for staging candidates), never production.
 - GitLab CI stages for testing, secret scanning, license checks, evidence
   collection, gating and a static, non-deployed staging artifact.
@@ -44,7 +48,10 @@ No paid service, external API, model download or GPU required.
     python3 stage_preview.py
 
 The local evidence file MUST say LOCAL_FIXTURE_NOT_GITLAB and is not a live
-GitLab Duo result. Real pipeline results require a project provisioned by
+GitLab Duo result. The CI independent_gate job invokes --require-gitlab, which
+fails closed outside a job with matching GitLab runtime identity.
+A CI environment variable alone is not cryptographic attestation; verify
+authentic pipeline history using the organizer-provisioned GitLab project. Real pipeline results require a project provisioned by
 GitLab plus actual GitLab CI execution, with visible job and session history.
 
 An adversarial demonstration:

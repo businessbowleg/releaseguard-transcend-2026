@@ -8,7 +8,7 @@ import unittest
 
 from releaseguard import (
     InvalidEvidence, canonical, decide, inspect_paths, sha256, synthetic_evidence,
-    validate_evidence, validate_proposal, verify_approval,
+    validate_evidence, validate_proposal, verify_approval, verify_ci_runtime,
 )
 
 SHA="a"*40
@@ -80,16 +80,44 @@ class ReleaseGuardTests(unittest.TestCase):
         self.proposal["changes"]=["alias.py"]
         self.assertEqual(decide(self.root,self.proposal,self.evidence)["decision"],"NO_GO")
 
+    def test_parent_symlink_inside_root_blocks(self):
+        nested=self.root/"real"
+        nested.mkdir()
+        (nested/"child.py").write_text("pass")
+        (self.root/"alias").symlink_to(nested,target_is_directory=True)
+        self.proposal["changes"]=["alias/child.py"]
+        r=decide(self.root,self.proposal,self.evidence)
+        self.assertEqual(r["decision"],"NO_GO")
+        self.assertEqual(r["path_findings"][0]["issue"],"path_escape")
+
+    def test_cli_fails_closed_without_gitlab_job(self):
+        import subprocess
+        import sys
+        source=self.root/"proposal.json"
+        evidence=self.root/"evidence.json"
+        decision=self.root/"decision.json"
+        source.write_text(json.dumps(self.proposal))
+        evidence.write_text(json.dumps(self.evidence))
+        runner=Path(__file__).resolve().parents[1]/"releaseguard.py"
+        env={k:v for k,v in os.environ.items() if not k.startswith("CI_") and k!="GITLAB_CI"}
+        result=subprocess.run(
+            [sys.executable,str(runner),"check","--root",str(self.root),
+             "--proposal",str(source),"--evidence",str(evidence),
+             "--output",str(decision),"--require-gitlab"],
+            capture_output=True,text=True,env=env,timeout=5)
+        self.assertNotEqual(result.returncode,0)
+        self.assertFalse(decision.exists())
+        self.assertIn("NO_GO",result.stderr)
+
     def test_duplicate_files_fail(self):
         self.proposal["changes"]=["app.py","app.py"]
         with self.assertRaises(InvalidEvidence):
             validate_proposal(self.proposal)
 
-    def test_tampered_stage_evidence_changes_digest(self):
-        before=decide(self.root,self.proposal,self.evidence)
-        self.evidence["stages"]["security"]["source"]="fixture-other"
-        after=decide(self.root,self.proposal,self.evidence)
-        self.assertNotEqual(before["decision_digest"],after["decision_digest"])
+    def test_tampered_stage_source_is_rejected(self):
+        self.evidence["stages"]["security"]["source"]="forged-GitLab-job"
+        with self.assertRaisesRegex(InvalidEvidence,"provenance"):
+            decide(self.root,self.proposal,self.evidence)
 
     def test_signed_staging_acknowledgement(self):
         result=decide(self.root,self.proposal,self.evidence)
@@ -126,6 +154,54 @@ class ReleaseGuardTests(unittest.TestCase):
 
     def test_mock_provenance_is_not_real_gitlab(self):
         self.assertEqual(self.evidence["provenance"]["pipeline_id"],"LOCAL_FIXTURE_NOT_GITLAB")
+
+    def test_ci_runtime_rejects_local_fixture(self):
+        with self.assertRaises(InvalidEvidence):
+            verify_ci_runtime(self.proposal,self.evidence,{"GITLAB_CI":"false"})
+
+    def test_ci_runtime_valid_identity(self):
+        pipeline="982401"
+        self.evidence["provenance"]["pipeline_id"]=pipeline
+        for stage,record in self.evidence["stages"].items():
+            record["source"]="GITLAB_PIPELINE_"+pipeline+"_"+stage
+        env={"GITLAB_CI":"true","CI_PIPELINE_ID":pipeline,
+             "CI_COMMIT_SHA":SHA,"CI_JOB_STAGE":"gate"}
+        self.assertTrue(verify_ci_runtime(self.proposal,self.evidence,env))
+
+    def test_ci_runtime_rejects_mismatched_job_commit(self):
+        pipeline="982401"
+        self.evidence["provenance"]["pipeline_id"]=pipeline
+        for stage,record in self.evidence["stages"].items():
+            record["source"]="GITLAB_PIPELINE_"+pipeline+"_"+stage
+        env={"GITLAB_CI":"true","CI_PIPELINE_ID":pipeline,
+             "CI_COMMIT_SHA":"b"*40,"CI_JOB_STAGE":"gate"}
+        with self.assertRaisesRegex(InvalidEvidence,"identity mismatch"):
+            verify_ci_runtime(self.proposal,self.evidence,env)
+
+    def test_ci_runtime_rejects_pipeline_swap(self):
+        pipeline="982401"
+        self.evidence["provenance"]["pipeline_id"]=pipeline
+        for stage,record in self.evidence["stages"].items():
+            record["source"]="GITLAB_PIPELINE_"+pipeline+"_"+stage
+        env={"GITLAB_CI":"true","CI_PIPELINE_ID":"982402",
+             "CI_COMMIT_SHA":SHA,"CI_JOB_STAGE":"gate"}
+        with self.assertRaisesRegex(InvalidEvidence,"pipeline identity mismatch"):
+            verify_ci_runtime(self.proposal,self.evidence,env)
+
+    def test_ci_runtime_rejects_wrong_stage(self):
+        pipeline="982401"
+        self.evidence["provenance"]["pipeline_id"]=pipeline
+        for stage,record in self.evidence["stages"].items():
+            record["source"]="GITLAB_PIPELINE_"+pipeline+"_"+stage
+        env={"GITLAB_CI":"true","CI_PIPELINE_ID":pipeline,
+             "CI_COMMIT_SHA":SHA,"CI_JOB_STAGE":"test"}
+        with self.assertRaisesRegex(InvalidEvidence,"Incorrect CI stage"):
+            verify_ci_runtime(self.proposal,self.evidence,env)
+
+    def test_invalid_numeric_pipeline_source_rejected(self):
+        self.evidence["provenance"]["pipeline_id"]="982401"
+        with self.assertRaisesRegex(InvalidEvidence,"provenance"):
+            decide(self.root,self.proposal,self.evidence)
 
 
 if __name__=="__main__":
