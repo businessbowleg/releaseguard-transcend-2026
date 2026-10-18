@@ -85,8 +85,11 @@ GitLab Duo or GitLab CI ran remotely.
 
 ## Local test
 
-No paid service, external API, model download or GPU required.
+No paid service, external model API, model download or GPU required.
+The standalone gate has no external Python dependencies; flow-contract tests
+use pinned PyYAML from requirements-test.txt, installed by the GitLab test job.
 
+    python3 -m pip install -r requirements-test.txt
     python3 -m unittest discover -s tests -v
     python3 ci_security.py
     python3 ci_evidence.py

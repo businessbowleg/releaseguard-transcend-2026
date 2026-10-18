@@ -13,6 +13,7 @@ default:
 unit_tests:
   stage: test
   script:
+    - python3 -m pip install --disable-pip-version-check --no-cache-dir -r requirements-test.txt
     - python3 -m unittest discover -s tests -v
     - python3 -m compileall -q releaseguard.py
     - python3 ci_attestation.py emit --stage tests

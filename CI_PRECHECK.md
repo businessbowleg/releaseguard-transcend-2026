@@ -69,3 +69,14 @@ Duo actually runs, and GitLab CI produces its visible history.
 - [ ] No agent can call GitLab merge, file modification or deployment tools.
 - [ ] Duo executes with coding_environment: none (API-only review).
 - [ ] Owner sees actual session evidence, not merely a local generated preview.
+
+## Fresh runner dependency check
+
+The unit test suite verifies the Duo flow with PyYAML, which is **not bundled**
+with the minimal python:3.12-alpine image. GitLab CI installs precisely the
+version specified in requirements-test.txt **before** running unittest.
+Neither the gate, the scanner, nor the evidence collector depends on PyYAML.
+If the runner has no PyPI access, mark the test job FAIL and do not fabricate
+evidence or suppress the tests.
+
+Do not count local or GitHub CI as actual GitLab execution.
