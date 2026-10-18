@@ -43,6 +43,11 @@ staging candidate is never confused with a production deployment.
 - Three proposed GitLab Duo agents: independent investigator, assessor and
   a restricted MR audit-note publisher, with HumanInputComponent approval.
   Only the exact approved route can reach the note publisher.
+- **Trigger contract:** enable this candidate only for GitLab's
+  "assigned as a merge-request reviewer" event. GitLab passes the numeric
+  merge-request IID in context:goal; each agent must use that IID and the
+  numeric context:project_id rather than an untrusted MR comment or URL.
+  This is prompt-level validation pending a real GitLab session.
 - The human approval checkpoint must render the **actual assessor findings**,
   exact project, merge request context, and the precisely scoped next action.
   Approval cannot silently merge, deploy or promote anything.

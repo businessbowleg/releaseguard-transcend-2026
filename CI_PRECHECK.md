@@ -80,3 +80,27 @@ If the runner has no PyPI access, mark the test job FAIL and do not fabricate
 evidence or suppress the tests.
 
 Do not count local or GitHub CI as actual GitLab execution.
+
+## Exact merge request trigger contract
+
+The ReleaseGuard Duo flow is designed for assigning the service account as
+a REVIEWER to a specific merge request, not generic issue/comment/mention or
+pipeline-event triggers. GitLab's context:goal then contains that MR's IID.
+The flow must receive that positive decimal IID plus context:project_id.
+When actual project access arrives, enable ONLY the reviewer-assignment event
+and confirm the UI shows the exact numeric target. If an inappropriate trigger
+is enabled, disable it and stop the demonstration until corrected.
+
+Even the post-approval comment publisher must fetch the exact target MR, read
+its note history and exit without writing when target identity is ambiguous.
+This is currently a PROMPT CONTRACT; a real GitLab Duo session and notes API
+inspection are required to verify enforcement.
+
+## Genuine negative-case demonstration
+
+Use a **separate non-default branch** with an intentionally failing,
+harmless unit test. Its GitLab CI pipeline should fail in the test job and
+prevent release evidence collection. A failed prerequisite may stop downstream
+jobs, so do NOT claim a release_decision.json NO_GO artifact exists unless the
+actual pipeline generated it. An absent decision is also a fail-closed outcome.
+Do not merge the deliberately failing branch into main.

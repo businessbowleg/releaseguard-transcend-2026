@@ -61,11 +61,11 @@ class DuoFlowContractTests(unittest.TestCase):
         attrs={x["as"]:x["from"] for x in gate["inputs"]}
         self.assertEqual(attrs,{
             "review_project":"context:project_id",
-            "review_goal":"context:goal",
+            "review_mr_iid":"context:goal",
             "review_summary":"context:independent_assessor.final_answer",
         })
         msg=gate["message_template"]
-        for slot in ("{{ review_project }}","{{ review_goal }}",
+        for slot in ("{{ review_project }}","{{ review_mr_iid }}",
                      "{{ review_summary }}"):
             self.assertIn(slot,msg)
         self.assertIn("ONE public merge-request REVIEW NOTE",msg)
@@ -105,7 +105,7 @@ class DuoFlowContractTests(unittest.TestCase):
         inputs={x["as"]:x["from"] for x in self.nodes["approved_audit_publisher"]["inputs"]}
         self.assertEqual(inputs,{
             "project_id":"context:project_id",
-            "merge_request_goal":"context:goal",
+            "mr_iid":"context:goal",
             "review_summary":"context:independent_assessor.final_answer",
             "owner_approval":"context:owner_gate.approval",
         })
@@ -125,6 +125,30 @@ class DuoFlowContractTests(unittest.TestCase):
                        "duplicate","cannot merge","prohibit production promotion",
                        "NO_ACTION"):
             self.assertIn(phrase,statement)
+
+    def test_only_mr_reviewer_trigger_is_supported(self):
+        raw=FLOW.read_text()
+        self.assertIn("MERGE REQUEST reviewer",raw)
+        self.assertIn("not free-form instructions",raw)
+        self.assertIn("Do not enable this flow for issue",raw)
+
+    def test_all_agents_use_numeric_trigger_iid(self):
+        for name in ("investigator","independent_assessor","approved_audit_publisher"):
+            comp=self.nodes[name]
+            bindings={a["as"]:a["from"] for a in comp["inputs"]}
+            self.assertEqual(bindings["mr_iid"],"context:goal")
+            self.assertEqual(bindings["project_id"],"context:project_id")
+            prompt=next(p for p in self.doc["prompts"] if p["prompt_id"]==comp["prompt_id"])
+            system=prompt["prompt_template"]["system"]
+            self.assertIn("decimal",system)
+            self.assertIn("project_id",system)
+        self.assertIn("numeric",self.doc["prompts"][1]["prompt_template"]["system"])
+
+    def test_gate_displays_exact_mr_and_blocks_ambiguous_target(self):
+        msg=self.nodes["owner_gate"]["message_template"]
+        self.assertIn("!{{ review_mr_iid }}",msg)
+        self.assertIn("malformed or missing IID",msg)
+        self.assertIn("REVIEW REQUIRED",msg)
 
     def test_no_other_write_tools_or_deploy(self):
         all_tools=[tool for node in self.doc["components"] for tool in node.get("toolset",[])]

@@ -7,6 +7,8 @@ organizer provisions the account's GitLab project.
 ## Before recording: evidence prerequisites
 
 1. GitLab public project URL exists within the hackathon workspace.
+   Configure the custom flow ONLY for assigning it as a merge-request
+   REVIEWER, where the trigger goal is the numeric merge-request IID.
 2. The .gitlab-ci.yml pipeline has executed in that project's actual history.
 3. The Duo custom flow is saved, validated and has completed a genuine session.
 4. An independent human approval checkpoint is visible in that session.
@@ -48,10 +50,12 @@ Only recorded artifacts and exact commit/pipeline identities count as
 evidence for the deterministic release gate."
 
 1:56–2:17 — Failure demonstration
-Visual: Genuine GitLab pipeline job deliberately fails on a safe test fixture.
-Show NO_GO and why. Return to valid pipeline.
-Narration: "When evidence fails or disappears, ReleaseGuard refuses
-staging. No vague AI confidence score overrides the gate."
+Visual: Genuine GitLab CI pipeline run for a separate intentionally failing
+unit-test branch. Show the actual failed test job, and verify that evidence
+collection and staging did NOT run. Then return to the real green pipeline.
+Never assert a NO_GO JSON was produced if downstream jobs were skipped.
+Narration: "A failed test blocks downstream evidence and release admission.
+The absence of a release decision is fail-closed, not silent approval."
 
 2:17–2:30 — Evidence dashboard/close
 Visual: Dashboard produced from actual GitLab pipeline artifacts; open
