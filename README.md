@@ -11,6 +11,25 @@ Created for the **GitLab Transcend Life After Code** hackathon (October 2026).
 This is an original, standalone MIT-licensed project and does not contain any
 proprietary ATLAS code, internal infrastructure configurations or credentials.
 
+## Evidence dashboard preview
+
+![ReleaseGuard report from a clearly marked local test fixture](docs/evidence-dashboard-local-fixture.png)
+
+The redesigned mobile-responsive dashboard is generated as a static GitLab CI
+artifact. It shows test/security/license/documentation/rollback stage evidence,
+the commit, pipeline provenance and an explicit no-production-permission
+decision. The pictured report is a **LOCAL TEST FIXTURE**, not a live GitLab
+pipeline or Duo run. Browser QA verifies five gates, accurate fixture warnings
+and no horizontal overflow at 390 pixels.
+
+## Competition presentation
+
+- [Prepared Devpost submission text — NOT SUBMITTED](SUBMISSION_DRAFT.md)
+- [2m30s real-evidence recording plan — VIDEO NOT YET RECORDED](DEMO_RUNBOOK.md)
+
+Our intended entry is **Path A / Start Fresh / Assisted**. GitLab Duo
+integration and actual GitLab CI history must be verified before submission.
+
 ## What it solves
 
 Teams increasingly generate code faster than they verify it. Automated agents

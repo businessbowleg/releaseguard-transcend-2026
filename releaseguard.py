@@ -201,7 +201,7 @@ def decide(root,proposal,evidence):
         "production_permitted":False,
         "deployment_performed":False,
         "reason":"Evidence gate blocked staging." if blocked else
-                 "Reviewable staging candidate only; separate human approval needed for production.",
+                 "Reviewable staging candidate only; no autonomous production permission exists.",
     }
     result["decision_digest"]=sha256(result)
     return result
