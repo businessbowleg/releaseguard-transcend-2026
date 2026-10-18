@@ -41,6 +41,7 @@ components:
   - name: "owner_gate"
     type: HumanInputComponent
     sends_response_to: "independent_assessor"
+    interaction_type: "approval"
     message_template: "Review risks and evidence. Approve a staging CANDIDATE only, modify, or reject. This flow cannot deploy to production."
     ui_log_events:
       - "on_user_input_prompt"
@@ -49,6 +50,7 @@ components:
 prompts:
   - prompt_id: "investigator_prompt"
     name: "Release Investigator"
+    unit_primitives: []
     prompt_template:
       system: |
         You are a review-only GitLab Duo release investigator.
@@ -59,17 +61,18 @@ prompts:
         Never edit files, create approvals, change access, merge, or deploy.
         The independent deterministic ReleaseGuard program determines whether
         evidence supports a staging candidate.
+        When analysis is complete, provide a cited risk summary and stop.
       user: |
         Project {{project_id}}.
         Incoming merge request context: {{merge_request_goal}}.
         Produce an evidence-centered risk review with GitLab source references.
       placeholder: history
-      unit_primitives: []
     params:
       timeout: 180
 
   - prompt_id: "assessor_prompt"
     name: "Independent Risk Assessor"
+    unit_primitives: []
     prompt_template:
       system: |
         Independently challenge the first agent's assumptions. Never mark PASS
@@ -79,13 +82,13 @@ prompts:
         Never authorize production or claim deployment.
         HumanInputComponent follows, but its approval is only an
         acknowledgement of a staging candidate, not promotion.
+        When finished, provide your independent risk summary and stop.
       user: |
         Project {{project_id}}.
         MR context: {{merge_request_goal}}.
         Prior untrusted investigation: {{investigation}}.
         Provide the independent decision rationale and missing evidence.
       placeholder: history
-      unit_primitives: []
     params:
       timeout: 180
 
@@ -101,7 +104,7 @@ routers:
         "approve": "end"
         "reject": "end"
         "modify": "independent_assessor"
-      default_route: "end"
+        "default_route": "end"
 
 flow:
   entry_point: "investigator"
