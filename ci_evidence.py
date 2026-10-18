@@ -1,0 +1,46 @@
+"""Construct pipeline-bound evidence only after successful GitLab CI upstream needs.
+
+This is not a GitLab Duo execution log. Offline execution emits
+LOCAL_FIXTURE_NOT_GITLAB and must not be submitted as a live pipeline.
+"""
+import json
+import os
+from pathlib import Path
+import re
+from datetime import datetime,timezone
+
+from releaseguard import STAGES
+
+ROOT=Path(__file__).resolve().parent
+commit=os.environ.get("CI_COMMIT_SHA","a"*40)
+if not re.fullmatch(r"[0-9a-f]{40}",commit):
+    raise SystemExit("Invalid CI commit SHA.")
+pipeline=os.environ.get("CI_PIPELINE_ID","LOCAL_FIXTURE_NOT_GITLAB")
+is_gitlab=os.environ.get("GITLAB_CI")=="true" and pipeline!="LOCAL_FIXTURE_NOT_GITLAB"
+scans=json.loads((ROOT/"scan_results.json").read_text())
+if scans.get("passed") is not True or scans.get("findings"):
+    raise SystemExit("Security scan did not pass.")
+if not (ROOT/"LICENSE").is_file() or "MIT License" not in (ROOT/"LICENSE").read_text():
+    raise SystemExit("MIT license absent.")
+if not (ROOT/"README.md").is_file() or not (ROOT/"AGENTS.md").is_file():
+    raise SystemExit("Missing documentary evidence.")
+if not (ROOT/"ROLLBACK.md").is_file():
+    raise SystemExit("Rollback procedure absent.")
+files=["releaseguard.py"]
+rationale="Read-only release evidence verification. Agent's recommendations do not confer authority."
+proposal={"version":1,"request_id":"CI_"+commit[:16],
+          "commit":commit,"action":"stage","changes":files,
+          "agent_rationale":rationale}
+provenance={
+    "pipeline_id":pipeline,
+    "runner":os.environ.get("CI_RUNNER_DESCRIPTION","local-fixture")[:110],
+    "collected_at":datetime.now(timezone.utc).isoformat(),
+}
+source=("GITLAB_PIPELINE_"+pipeline if is_gitlab else "LOCAL_FIXTURE_NOT_GITLAB")
+evidence={"version":1,"commit":commit,
+          "stages":{stage:{"status":"PASS","source":source+"_"+stage} for stage in STAGES},
+          "provenance":provenance}
+(ROOT/"release_proposal.json").write_text(json.dumps(proposal,indent=2)+"\n")
+(ROOT/"release_evidence.json").write_text(json.dumps(evidence,indent=2)+"\n")
+print(json.dumps({"pipeline":pipeline,"claim":"GITLAB_CI_UPSTREAM_JOB_SUCCESS" if is_gitlab else "LOCAL_FIXTURE_NOT_GITLAB",
+                  "agent_platform":"NOT_YET_VERIFIED","stages":list(STAGES)}))

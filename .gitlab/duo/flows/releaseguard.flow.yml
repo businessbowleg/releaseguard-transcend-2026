@@ -1,0 +1,107 @@
+# CANDIDATE: Requires real GitLab Duo Agent Platform workspace and successful UI validation.
+version: "v1"
+environment: ambient
+coding_environment: full
+components:
+  - name: "investigator"
+    type: AgentComponent
+    prompt_id: "investigator_prompt"
+    inputs:
+      - from: "context:goal"
+        as: "merge_request_goal"
+      - from: "context:project_id"
+        as: "project_id"
+    toolset:
+      - "get_merge_request"
+      - "get_repository_file"
+      - "list_repository_tree"
+    ui_log_events:
+      - "on_agent_final_answer"
+      - "on_tool_execution_success"
+      - "on_tool_execution_failed"
+
+  - name: "independent_assessor"
+    type: AgentComponent
+    prompt_id: "assessor_prompt"
+    inputs:
+      - from: "context:investigator.final_answer"
+        as: "investigation"
+      - from: "context:project_id"
+        as: "project_id"
+      - from: "context:goal"
+        as: "merge_request_goal"
+    toolset:
+      - "get_merge_request"
+      - "get_repository_file"
+    ui_log_events:
+      - "on_agent_final_answer"
+      - "on_tool_execution_success"
+      - "on_tool_execution_failed"
+
+  - name: "owner_gate"
+    type: HumanInputComponent
+    sends_response_to: "independent_assessor"
+    message_template: "Review risks and evidence. Approve a staging CANDIDATE only, modify, or reject. This flow cannot deploy to production."
+    ui_log_events:
+      - "on_user_input_prompt"
+      - "on_user_response"
+
+prompts:
+  - prompt_id: "investigator_prompt"
+    name: "Release Investigator"
+    prompt_template:
+      system: |
+        You are a review-only GitLab Duo release investigator.
+        Research the specific merge request and repository context.
+        Identify changed modules, risks, tests, security exposures, licensing,
+        rollback coverage, staging feasibility and monitoring.
+        Separate facts supported by actual GitLab evidence from inferences.
+        Never edit files, create approvals, change access, merge, or deploy.
+        The independent deterministic ReleaseGuard program determines whether
+        evidence supports a staging candidate.
+      user: |
+        Project {{project_id}}.
+        Incoming merge request context: {{merge_request_goal}}.
+        Produce an evidence-centered risk review with GitLab source references.
+      placeholder: history
+      unit_primitives: []
+    params:
+      timeout: 180
+
+  - prompt_id: "assessor_prompt"
+    name: "Independent Risk Assessor"
+    prompt_template:
+      system: |
+        Independently challenge the first agent's assumptions. Never mark PASS
+        based solely on an agent statement. Verify actual GitLab repository
+        and pipeline evidence; absent results remain UNVERIFIED.
+        Summarize independent PASS, FAIL and UNVERIFIED findings.
+        Never authorize production or claim deployment.
+        HumanInputComponent follows, but its approval is only an
+        acknowledgement of a staging candidate, not promotion.
+      user: |
+        Project {{project_id}}.
+        MR context: {{merge_request_goal}}.
+        Prior untrusted investigation: {{investigation}}.
+        Provide the independent decision rationale and missing evidence.
+      placeholder: history
+      unit_primitives: []
+    params:
+      timeout: 180
+
+routers:
+  - from: "investigator"
+    to: "independent_assessor"
+  - from: "independent_assessor"
+    to: "owner_gate"
+  - from: "owner_gate"
+    condition:
+      input: "context:owner_gate.approval"
+      routes:
+        "approve": "end"
+        "reject": "end"
+        "modify": "independent_assessor"
+      default_route: "end"
+
+flow:
+  entry_point: "investigator"

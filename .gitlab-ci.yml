@@ -1,0 +1,80 @@
+# Candidate GitLab CI: must actually run in hackathon GitLab workspace.
+stages:
+  - test
+  - security
+  - license
+  - evidence
+  - gate
+  - stage
+
+default:
+  image: python:3.12-alpine
+
+unit_tests:
+  stage: test
+  script:
+    - python3 -m unittest discover -s tests -v
+    - python3 -m compileall -q releaseguard.py
+
+secret_scan:
+  stage: security
+  script:
+    - python3 ci_security.py
+  artifacts:
+    when: always
+    paths:
+      - scan_results.json
+    expire_in: 1 week
+
+license_check:
+  stage: license
+  script:
+    - test -f LICENSE
+    - grep -q "MIT License" LICENSE
+    - test -f AGENTS.md
+    - test -f README.md
+
+create_evidence:
+  stage: evidence
+  needs:
+    - job: unit_tests
+      artifacts: false
+    - job: secret_scan
+      artifacts: true
+    - job: license_check
+      artifacts: false
+  script:
+    - python3 ci_evidence.py
+  artifacts:
+    when: always
+    paths:
+      - release_evidence.json
+      - release_proposal.json
+    expire_in: 1 week
+
+independent_gate:
+  stage: gate
+  needs:
+    - job: create_evidence
+      artifacts: true
+  script:
+    - python3 releaseguard.py check --root . --proposal release_proposal.json --evidence release_evidence.json --output release_decision.json
+  artifacts:
+    when: always
+    paths:
+      - release_decision.json
+    expire_in: 1 week
+
+staging_preview:
+  stage: stage
+  needs:
+    - job: independent_gate
+      artifacts: true
+  script:
+    - python3 stage_preview.py
+  artifacts:
+    when: always
+    paths:
+      - public/
+      - staging_receipt.json
+    expire_in: 1 week
