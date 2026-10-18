@@ -34,8 +34,10 @@ Narration: "One agent investigates. A second assessor challenges
 the first conclusions rather than rubber-stamping them."
 
 1:04–1:27 — Human review and one restricted action
-Visual: Genuine HumanInputComponent pause with Approve/Reject/Modify and,
-if truly approved, the newly posted evidence-labelled MR review note.
+Visual: Genuine HumanInputComponent pause showing the EXACT GitLab project,
+target MR, independently verified findings, and Approve/Reject/Modify.
+After genuine approval, show the newly posted evidence-labelled MR review note.
+Never present a blank approval screen as proof of governed review.
 Narration: "The human can permit exactly one MR review note,
 modify the request, or reject it. There is no production autopilot."
 

@@ -43,6 +43,12 @@ staging candidate is never confused with a production deployment.
 - Three proposed GitLab Duo agents: independent investigator, assessor and
   a restricted MR audit-note publisher, with HumanInputComponent approval.
   Only the exact approved route can reach the note publisher.
+- The human approval checkpoint must render the **actual assessor findings**,
+  exact project, merge request context, and the precisely scoped next action.
+  Approval cannot silently merge, deploy or promote anything.
+- API-only Duo execution (coding_environment: none): no repository checkout
+  or full coding sandbox is required for these read-only reviewers. Only
+  the post-approval publisher has one merge-request note-writing tool.
 - Deterministic stage checks for tests, security, licensing, documentation
   and a written rollback plan.
 - Exact source commit and evidence digests; rejecting paths that escape the

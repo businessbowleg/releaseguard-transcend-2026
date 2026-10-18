@@ -21,11 +21,13 @@ class DuoFlowContractTests(unittest.TestCase):
     def test_valid_v1_ambient(self):
         self.assertEqual(self.doc["version"],"v1")
         self.assertEqual(self.doc["environment"],"ambient")
-        self.assertEqual(self.doc["coding_environment"],"full")
+        self.assertEqual(self.doc["coding_environment"],"none")
         self.assertEqual(self.doc["flow"]["entry_point"],"investigator")
 
     def test_investigators_have_read_only_tools(self):
-        read_tools={"get_merge_request","get_repository_file","list_repository_tree"}
+        read_tools={"get_merge_request","get_repository_file","list_repository_tree",
+                    "list_merge_request_diffs","gitlab_api_get",
+                    "get_pipeline_errors","get_job_logs"}
         for node_name in ("investigator","independent_assessor"):
             self.assertTrue(set(self.nodes[node_name]["toolset"])<=read_tools)
 
@@ -33,7 +35,7 @@ class DuoFlowContractTests(unittest.TestCase):
         writer=self.nodes["approved_audit_publisher"]
         self.assertEqual(writer["type"],"AgentComponent")
         self.assertEqual(set(writer["toolset"]),{
-            "get_merge_request","gitlab_api_get","create_merge_request_note"
+            "get_merge_request","list_all_merge_request_notes","create_merge_request_note"
         })
         self.assertEqual(sum("create_" in item for item in writer["toolset"]),1)
 
@@ -53,6 +55,51 @@ class DuoFlowContractTests(unittest.TestCase):
         self.assertEqual(gate["interaction_type"],"approval")
         self.assertIn("on_user_input_prompt",gate["ui_log_events"])
         self.assertIn("on_user_response",gate["ui_log_events"])
+
+    def test_human_gate_must_show_independent_findings(self):
+        gate=self.nodes["owner_gate"]
+        attrs={x["as"]:x["from"] for x in gate["inputs"]}
+        self.assertEqual(attrs,{
+            "review_project":"context:project_id",
+            "review_goal":"context:goal",
+            "review_summary":"context:independent_assessor.final_answer",
+        })
+        msg=gate["message_template"]
+        for slot in ("{{ review_project }}","{{ review_goal }}",
+                     "{{ review_summary }}"):
+            self.assertIn(slot,msg)
+        self.assertIn("ONE public merge-request REVIEW NOTE",msg)
+        self.assertIn("Reject or modify",msg)
+        self.assertIn("does not authorize merging",msg)
+
+    def test_read_only_api_mode_requires_no_clone(self):
+        self.assertEqual(self.doc["coding_environment"],"none")
+        used={x for node in self.nodes.values() for x in node.get("toolset",[])}
+        self.assertNotIn("run_command",used)
+        self.assertNotIn("read_file",used)
+        self.assertIn("get_pipeline_errors",used)
+        self.assertIn("list_merge_request_diffs",used)
+        self.assertIn("gitlab_api_get",used)
+
+    def test_approval_is_only_route_to_writer(self):
+        routes=self.doc["routers"]
+        paths=[]
+        for r in routes:
+            if "to" in r and r["to"]=="approved_audit_publisher":
+                paths.append(r["from"])
+            if "condition" in r:
+                paths.extend((r["from"],k) for k,v in
+                             r["condition"]["routes"].items()
+                             if v=="approved_audit_publisher")
+        self.assertEqual(paths,[("owner_gate","approve")])
+
+    def test_assessor_requires_real_ci_identity(self):
+        prompt=next(p for p in self.doc["prompts"]
+                    if p["prompt_id"]=="assessor_prompt")
+        sys=prompt["prompt_template"]["system"]
+        for v in ("exact commit","pipeline ID","job status",
+                  "UNVERIFIED","local fixture"):
+            self.assertIn(v,sys)
 
     def test_writer_receives_exact_context(self):
         inputs={x["as"]:x["from"] for x in self.nodes["approved_audit_publisher"]["inputs"]}
@@ -74,7 +121,7 @@ class DuoFlowContractTests(unittest.TestCase):
     def test_publisher_prompt_forbids_prod_and_duplicate_writes(self):
         prompt=next(p for p in self.doc["prompts"] if p["prompt_id"]=="publisher_prompt")
         statement=prompt["prompt_template"]["system"]
-        for phrase in ("create_merge_request_note","gitlab_api_get","exactly ONCE",
+        for phrase in ("create_merge_request_note","list_all_merge_request_notes","exactly ONCE",
                        "duplicate","cannot merge","prohibit production promotion",
                        "NO_ACTION"):
             self.assertIn(phrase,statement)

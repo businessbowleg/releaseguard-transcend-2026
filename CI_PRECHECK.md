@@ -57,3 +57,15 @@ real GitLab job output and must not be presented as such.
 
 This remains a candidate until the organizer provisions the project,
 Duo actually runs, and GitLab CI produces its visible history.
+
+
+## Approval UI acceptance checks
+
+- [ ] Actual gate displays the project ID, target MR, and entire assessor summary.
+- [ ] Modify returns to the already-run assessor for revision, then pauses again.
+- [ ] Reject terminates without any note.
+- [ ] Approve is the ONLY route to the restricted note publisher.
+- [ ] Publisher reads all MR notes and refuses duplicates or incomplete results.
+- [ ] No agent can call GitLab merge, file modification or deployment tools.
+- [ ] Duo executes with coding_environment: none (API-only review).
+- [ ] Owner sees actual session evidence, not merely a local generated preview.
