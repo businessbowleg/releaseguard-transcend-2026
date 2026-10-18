@@ -1,6 +1,6 @@
 # ReleaseGuard — Evidence-first GitLab Duo release governance
 
-**Status: independently tested local candidate, NOT yet entered or validated on GitLab.**
+**Status: Devpost registration confirmed; independent local candidate, NOT yet validated in organizer-provisioned GitLab workspace.**
 
 ReleaseGuard demonstrates a governed AI DevSecOps workflow: investigate an MR,
 independently check evidence, run security/licensing/testing gates, produce a
@@ -40,8 +40,9 @@ staging candidate is never confused with a production deployment.
 
 ## Core controls
 
-- Two proposed GitLab Duo agents, independent investigator and assessor,
-  plus HumanInputComponent review (candidate flow YAML).
+- Three proposed GitLab Duo agents: independent investigator, assessor and
+  a restricted MR audit-note publisher, with HumanInputComponent approval.
+  Only the exact approved route can reach the note publisher.
 - Deterministic stage checks for tests, security, licensing, documentation
   and a written rollback plan.
 - Exact source commit and evidence digests; rejecting paths that escape the

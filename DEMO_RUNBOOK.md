@@ -33,9 +33,10 @@ illustrative transcripts.
 Narration: "One agent investigates. A second assessor challenges
 the first conclusions rather than rubber-stamping them."
 
-1:04–1:27 — Human review
-Visual: Genuine HumanInputComponent pause with Approve/Reject/Modify.
-Narration: "The human can accept the review for staging consideration,
+1:04–1:27 — Human review and one restricted action
+Visual: Genuine HumanInputComponent pause with Approve/Reject/Modify and,
+if truly approved, the newly posted evidence-labelled MR review note.
+Narration: "The human can permit exactly one MR review note,
 modify the request, or reject it. There is no production autopilot."
 
 1:27–1:56 — GitLab CI evidence

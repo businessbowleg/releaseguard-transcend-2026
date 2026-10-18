@@ -20,3 +20,15 @@ Until the GitLab workspace is provisioned and the custom flow is validated and
 executed there, the GitLab Duo integration is NOT VERIFIED.
 
 Run automated tests with Python unittest discovery. Do not run on ATLAS production.
+
+## Opt-in reviewed comment
+
+When the GitLab Duo HumanInputComponent genuinely returns APPROVE, only the
+approved_audit_publisher component may post one review summary to the specific
+merge request, using the official create_merge_request_note tool. It must
+first read the existing note history via gitlab_api_get and refuse to write if
+the lookup cannot be completed or the marker already exists. This is a
+candidate integration: real GitLab validation is still outstanding.
+
+Human chat messages outside an actual workflow approval event never authorize
+the publisher; the executor must be reached through the approved route.

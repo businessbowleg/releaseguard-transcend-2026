@@ -13,7 +13,9 @@ The GitHub repository is a preparation source, not the qualifying GitLab repo.
 4. Verify job history in the GitLab UI, not solely generated JSON.
 5. Configure the READ-ONLY GitLab Duo flow in the project's UI,
    validate its YAML, and enable a safe merge request trigger.
-6. Verify the authentic Duo Session and human review checkpoint.
+6. Verify the authentic Duo Session and human review checkpoint;
+   after actual approval, verify at most one MR note was posted on the
+   intended MR, and no merge, deployment or cross-project write occurred.
 7. Publish an actual under-three-minute demo to YouTube and submit Devpost.
 
 ## Expected CI jobs and records

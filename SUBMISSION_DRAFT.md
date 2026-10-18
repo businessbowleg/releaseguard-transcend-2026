@@ -14,7 +14,8 @@ ReleaseGuard — Evidence-first governance for AI-generated code
 
 ## One-liner
 
-Two independent GitLab Duo agents investigate a change while a deterministic
+Two independent GitLab Duo agents investigate a change, and an approval-gated
+third agent may post a read-only review summary, while a deterministic
 CI evidence gate refuses unsupported release claims, with human review before
 staging acknowledgement.
 
@@ -28,7 +29,9 @@ puts that distinction directly into the post-code lifecycle.
 ## What it does
 
 ReleaseGuard coordinates an AI investigator and independent AI assessor to
-review a GitLab merge request and its risks. A GitLab CI pipeline then checks
+review a GitLab merge request and its risks. After an explicit human approval,
+a third restricted agent can post one evidence-labelled MR audit comment.
+No automated merge or deployment is permitted. A GitLab CI pipeline then checks
 automated tests, source security, MIT licensing, documentation, rollback
 planning, and a structured provenance report. The deterministic gate returns
 NO_GO when evidence is absent or fails. If all checks pass, it produces a
@@ -38,8 +41,9 @@ read-only browser-accessible CI artifact dashboard.
 
 ## How it works
 
-- GitLab Duo Agent Platform custom flow: investigator -> independent assessor
-  -> HumanInputComponent; the flow itself uses read-only tools.
+- GitLab Duo Agent Platform candidate custom flow: investigator -> independent
+  assessor -> HumanInputComponent -> restricted MR audit-comment publisher.
+  Only the post-approval publisher is given the note-writing tool.
 - Python standard library policy engine; no external model needed by the
   deterministic judge and no paid inference required for local unit tests.
 - GitLab CI YAML: unit tests -> security -> license -> evidence -> independent
@@ -70,7 +74,7 @@ cryptographic proof; real GitLab history is the final authority.
 
 - Public organizer-provisioned GitLab project URL: [TO BE VERIFIED]
 - Actual GitLab CI passing pipeline URL and job history: [TO BE VERIFIED]
-- Real GitLab Duo custom flow / session URL: [TO BE VERIFIED]
+- Real GitLab Duo custom flow / session URL and approved MR note: [TO BE VERIFIED]
 - Human acknowledgement checkpoint screenshot/session: [TO BE VERIFIED]
 - Public YouTube video (<3 minutes) of the ACTUAL GitLab run: [TO BE RECORDED]
 - Devpost published project URL: [NOT SUBMITTED]
